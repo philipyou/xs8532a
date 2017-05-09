@@ -1,0 +1,591 @@
+;;;;UNIT_AND_lowbat_and_RST 15/5/2K3 10:41   ????
+;;;;changed 4/7/2k3
+;;; cali_test
+;;; int_all
+;;; open_power,close_power
+;;; err_out
+;;; set_option
+;;; mem_app
+;;; calibration is changed. write only 6bytes.
+
+;;;****************************************************
+;;;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Sub_Cali_adz_T:
+        call    cali_test
+	call    Sub_Get_Unit
+cali_s0:		
+	call    sub_cali_locked
+	btfss   SYS_FLAG2,pin_conb
+	goto    cali_out
+;;;---------------------------------------
+	movff   AdBuf0l,Ad0_Zerol
+	movff   AdBuf0h,Ad0_Zeroh
+;;	movlf   2,COUNTER0
+;;cali_dsp_lpb1:	
+	call	sub_dsp_cal40
+	call    sub_nflash_ntk
+;;	movlw   d1s
+;;	call    sub_delay_12m823
+;;	call	Sub_Dsp_Lcd_Null
+;;	movlw   d500ms
+;;	call    sub_delay_12m823
+;;	decfsz  counter0,1
+;;	goto    cali_dsp_lpb1
+;;	call	sub_dsp_cal40
+;;;--------------------------------------------------
+cali_s1:			
+	call    sub_cali_locked
+	btfss   SYS_FLAG2,pin_conb
+	goto    cali_out            ;;;;key_err or p6,p7no con.
+;;;---------------------------------------
+	movfw   Ad0_Zerol
+	subwf   AdBuf0l,0
+	movwf   Cali_KBL
+	
+	movfw   Ad0_Zeroh
+	subwfc  AdBuf0h,0
+	movwf   Cali_KBel
+	
+	btfss   STATUS,C           ;;;yes/no 
+	goto    cali_s1
+	
+	movlw   03h
+	subwf   Cali_KBel,0
+	btfss   STATUS,C
+	goto    cali_s1	
+;;;---------------------------------------
+;;	movlf   2,COUNTER0
+;;cali_dsp_lpb2:	
+	call	sub_dsp_cal120
+	call    sub_nflash_ntk	
+;;	movlw   d1s
+;;	call    sub_delay_12m823
+;;	call	Sub_Dsp_Lcd_Null
+;;	movlw   d500ms
+;;	call    sub_delay_12m823
+;;	decfsz  counter0,1
+;;	goto    cali_dsp_lpb2
+;;	call	sub_dsp_cal120
+;;;---------------------------------------------------------	
+	bsf     Ad_Flag,Adc_LD  ;;;large_Diffrence
+	btfss   STATUS,C
+	bcf     Ad_Flag,Adc_LD	;;;small_Diffrence 	
+;;;--------------------------------------------------
+cali_s2:		
+	call    sub_cali_locked
+	btfss   SYS_FLAG2,pin_conb
+	goto    cali_out            ;;;;key_err or p6,p7no con.
+;;;---------------------------------------
+	movfw   Ad0_Zerol
+	subwf   AdBuf0l,1
+	movfw   Ad0_Zeroh
+	subwfc  AdBuf0h,1
+
+	movfw   Cali_KBL
+	subwf   AdBuf0l,1
+	movfw   Cali_KBel
+	subwfc  AdBuf0h,1
+
+	movff   AdBuf0h,Cali_KBeh
+	movff   AdBuf0l,Cali_KBH
+;;;-----------------------------------------
+	btfss   STATUS,C           ;;;yes/no 
+	goto    cali_s2
+	
+	movlw   06h
+	subwf   Cali_KBeh,0
+	btfss   STATUS,C
+	goto    cali_s2	
+;;;------------------------------------------
+;;;==========================================	
+cali_s3:	
+cali_test:
+;;	movlf   2,COUNTER0
+;;cali_dsp_lpb3:	
+	call	sub_dsp_calRES
+	call    sub_nflash_ntk	
+;;	movlw   d1s
+;;	call    sub_delay_12m823
+;;	call	Sub_Dsp_Lcd_Null
+;;	movlw   d500ms
+;;	call    sub_delay_12m823
+;;	decfsz  counter0,1
+;;	goto    cali_dsp_lpb3
+;;	call	sub_dsp_calRES
+;;;-----------------------------------------
+cali_test_s:
+        call    sub_res_locked
+	
+	movff   al,res_0l
+	movff   ah,res_0h
+	movlw   030h
+	subwf   res_0h,0
+	btfss   STATUS,C
+	goto    cali_test_s
+	
+;;;----------------------------------------
+;;	movlf   2,COUNTER0
+;;cali_dsp_lpb4:	
+	call	sub_dsp_calRES1
+	call    sub_nflash_ntk	
+;;	movlw   d1s
+;;	call    sub_delay_12m823
+;;	call	Sub_Dsp_Lcd_Null
+;;	movlw   d500ms
+;;	call    sub_delay_12m823
+;;	decfsz  counter0,1
+;;	goto    cali_dsp_lpb4
+;;	call	sub_dsp_calRES1
+	
+cali_test_s1:
+        call    sub_res_locked
+	movff   al,res_3000l
+	movff   ah,res_3000h
+	movlw   022h
+	subwf   res_3000h,0
+	btfsc   STATUS,C
+	goto    cali_test_s1	
+
+;;;===================================
+test_ture_res:
+        call    Sub_acc_res
+	movff   res_rtemph,bh   
+	movff   res_rtempl,bl
+	CALL    sub_Hex2BCD
+        call    dsp_weight_kglb
+        goto    test_ture_res
+
+;;;=================================	
+	movlw   00h
+	btfsc   Unit_Flag,Unit_kg   
+	movlw   0ffh
+	movwf   w_range
+;;;===============================================
+test:
+        bsf     status,6
+	movlf   12,COUNTER0	
+	movlf   user1,fsr0
+sub_user_ram:	
+	movlf   08ch,ind0            ;;;140 cm
+	incf    fsr0,1
+	movlf   014h,ind0            ;;;20	
+	incf    fsr0,1
+	movlf   0ffh,ind0            ;;bit0 = 男/女  1 / 0  bit1 = 非运动员 / 运动员 1 / 0
+	incf    fsr0,1	
+	decfsz  counter0,1
+	goto    sub_user_ram
+	bcf     status,6		
+;;;===============================================	
+;test_res_cali:	
+;	
+;	movlf    20h,e2data_adt0
+;	movlf    20h,e2data_adt0+1
+;	
+;	movlf    0edh,e2data_adt0+2
+;	movlf    09h,e2data_adt0+3
+;	
+;	movlf    0edh,e2data_adt0+4
+;	movlf    09h,e2data_adt0+5
+;	
+;	movlf    0edh,e2data_adt0+6
+;	movlf    09h,e2data_adt0+7	
+	
+;	movlf    20h,e2data_adt0+8
+;	movlf    0fh,e2data_adt0+9
+;	
+;	movlf    0c0h,e2data_adt0+10
+;	movlf    09h,e2data_adt0+11	
+;	
+;	movlf    0c0h,e2data_adt0+12
+;	movlf    09h,e2data_adt0+13
+;	
+;	movlf    0c0h,e2data_adt0+14
+;	movlf    09h,e2data_adt0+15
+
+	movlf   ca_e2rom_test,type_call
+	mc_write_ram_to_e2rom_scounter  00h,0c0h,16   ;;;changed to 16
+;;;------------------------------------------
+;;cali_set_e2rom:
+	
+;;	movlf   80H,clr_raml
+;;	movlf   0efH,clr_ramh 
+;;	call	sub_fill_ram
+	
+;;	movlf    ca_e2rom_test,type_call
+	mc_write_ram_to_e2rom_scounter  10h,0110h,16
+	mc_write_ram_to_e2rom_scounter  20h,0120h,16
+	mc_write_ram_to_e2rom_scounter  30h,0130h,6		
+;;	movlw   d100ms
+;;	call    sub_delay_12m823	
+;;	movlf    ca_e2rom_test,type_call
+;;	mc_write_ram_to_e2rom_scounter  70h,0e0h,16
+;;	movlw   d100ms
+;;	call    sub_delay_12m823	
+;;	movlf    ca_e2rom_test,type_call
+;;	mc_write_ram_to_e2rom_scounter  80h,0e0h,16
+;;	movlw   d100ms
+;;	call    sub_delay_12m823	
+;;	movlf    ca_e2rom_test,type_call
+;;	mc_write_ram_to_e2rom_scounter  0a0h,0e0h,16
+;;	movlw   d100ms
+;;	call    sub_delay_12m823
+;;	mc_write_ram_to_e2rom_scounter  0c0h,0e0h,16
+;;	movlw   d100ms
+;;	call    sub_delay_12m823
+;;	mc_write_ram_to_e2rom_scounter  0e0h,0e0h,16
+;;	movlw   d100ms
+;;	call    sub_delay_12m823	
+;;;---------------------------------------
+;;	call    Sub_Dsp_Lcd_Null
+;;	movlw   Lcdcho
+;;	call    sub_dspw_4bit		;;;0109ens
+;;	movlw   d2s
+;;	call    sub_delay_12m823        
+;;;**************************************************
+cali_out:
+	mc_close_adc_power
+;;;-------------------------------------------------
+	call    sub_clear_allint
+;;	call    sub_close_blight
+	
+	call    Sub_Dsp_Lcd_Null
+	movlw   Lcdch1
+        movwf   bLCD4
+	movlw   Lcdch8
+	btfss   Unit_Flag,Unit_kg   
+	movlw   Lcdch5
+	movwf   blcd3
+	movlw   Lcdch2
+	movwf   blcd2
+	movlw   Lcdch0
+	movwf   blcd1	
+        call    sub_dsp_real
+        bsf     04ah,0   			
+	movlw   d1s
+	call    sub_delay_12m823
+	
+	call    Sub_Dsp_Lcd_Null
+	Movlf   LcdchP,bLCD4
+	movlf   LcdchA,bLCD3
+        Movlf   LcdchS,bLCD2
+        Movlf   LcdchS,bLCD1        
+	call    SUB_DSP_REAL
+	movlw   d2s
+	call    sub_delay_12m823	
+				
+        goto    Main_Sleep	    
+        return
+;;;**************************************************
+;;;**************************************************
+sub_res_locked:
+	movlf   Adf_SAdd,Adf_Times
+	clrf    Adf_old
+	clrf    Adf_old+1
+cali_S_loop1:	
+	call	sub_t_res_start
+	movff   ah,AdBufferm   
+	movwf   AdBuf0h
+	movff   al,AdBufferl
+	movwf   AdBuf0l	
+	call    Sub_Dsp_Lcd_Null
+	call    Sub_Dsp_Counter
+        call    sub_dsp_real
+	call    Sub_Adc_Filter
+	je_fd   Adf_Times,04H		;;;lw_lock_times,04        ;;;04h
+	goto    cali_S_loop1   
+	return	
+;;;**************************************************
+sub_cali_locked:
+	movlf   Adf_SAdd,Adf_Times
+	clrf    Adf_old
+	clrf    Adf_old+1
+cali_S_loop:
+        bcf     SYS_FLAG2,pin_conb 
+	call    Sub_Get_Adc
+	btfsc   SYS_FLAG3,fb_key_type2	
+	return
+	bsf     SYS_FLAG2,pin_conb
+	
+	movff   Adcbuf0l2,AdBufferh
+	movwf   AdBuf0l2		
+	movff   Adcbuf0l1,AdBufferm   
+	movwf   AdBuf0l1
+	movff   Adcbuf0l,AdBufferl
+	movwf   AdBuf0l
+	call    Sub_Dsp_Lcd_Null
+	call    Sub_Dsp_Counter
+        call    sub_dsp_real
+	call    Sub_Adc_Filter
+;;	movfw   WL     			;;;;98h	;;;15000 counter  range
+;;	subwf   Adbuf0l,0       	;;;;
+;;	movfw   WH     			;;;;3DH     
+;;	subwfc  Adbuf0l1,0    	
+;;	Skip_If_MorE			;;Skip_If_Less	;;;test
+;;	goto    cali_s_loop
+	
+	je_fd   Adf_Times,04H		;;;lw_lock_times,04        ;;;04h
+	goto    cali_S_loop   
+	return
+;;;**********************************************
+
+;;;**********************************************
+;;;;***************************************************
+sub_close_blight:
+sub_test_r:
+;	bSf     pt2en,bl_c     	  ;;;1 is OUT
+;	bcf     pt2pu,bl_c	  ;;;1 is pull
+;        bcf     pt2,bl_c
+	return
+;;;***************************************************
+;;;   there delete set_p3 is key.   28/08/2k5   0:56
+;;;***************************************************
+sub_dspw_4bit:
+	movwf   LCDG
+	movwf   LCDS
+	movwf   LCDB
+	movwf   LCDQ
+	movwf   LCDW
+	movwf   LCDH
+	call    sub_dsp_real		
+	return
+;;;===================================================     
+
+
+;;;************************************************
+
+
+
+
+
+
+;;;====================================================
+sub_res_calu1:	
+;;	movfw   res_0l
+;;	subwf   res_rtempl,0
+;;	movfw   res_0h
+;;	subwfc  res_rtemph,0
+;;	jnc
+;;	goto    res_err_over		;;;return  不能小于0欧内码
+	
+;;	movfw   res_3000l
+;;	subwf   res_rtempl,0
+;;	movfw   res_3000h
+;;	subwfc  res_rtemph,0
+;;	jc
+;;	goto    res_err_over		;;;return  不能大于1700欧内码
+;;;----------------------------------------------------	
+;;	movfw   res_3000l		;;;res odds / 512  标定阻抗差值内码
+;;	subwf   res_0l,0
+;;	movwf   bh
+;;	movfw   res_3000h
+;;	subwfc  res_0h,0
+;;	movwf   ebl			;;;this data extend 256 times.
+;;;---------------------------------------		
+;; ebx = ebh / ecx
+;;	clrf     ebh
+;;	clrf     bl
+;;        clrf     ech
+;;        clrf     ecl
+;;        movlf    05h,ch
+;;        movlf    56h,cl
+;;	call     sub_4div4		;;;result in ebx  is res times.
+;;;----------------------------------------------------
+;;        movff    bh,res_times_h
+;;        movff    bl,res_times_l		;;;res times.  05CE
+;;;====================================================	
+
+;;;----------------------------------------------------	
+;;	clrf    dl
+;;	clrf    ech
+;;	clrf    cl
+;;	movff   res_0l,ch
+;;	movff   res_0h,ecl
+;;;----------------------------------------------------
+;;calu_res_lp:
+;;       movfw   dl		;;;res k.
+;;        call    sub_res_table	;;;get k k   查表得
+;;        movwf   bl
+;;        clrf    ebh
+;;        clrf    ebl
+;;        clrf    bh
+        
+;;        movff   res_times_h,ah
+;;        movff   res_times_l,al
+;;        clrf    eah
+;;	    clrf    eal
+;;	    call    sub_mul4   ;;; vvv eax(msb)|ebx(lsb)=eax*ebx   256 * 2 *124; so no over 0ffffh
+;;;------------------------------------
+;;        movfw   bl
+;;	    subwf   cl,1
+;;	    movfw   bh
+;;	    subwfc  ch,1
+;;	    movfw   ebl
+;;	    subwfc  ecl,1
+;;	    movfw   ebh
+;;	    subwfc  ech,1
+;;        jc
+;;       goto    calu_res_over        ;;;here is ok!!!!   14:32 
+;;;------------------------------------        
+;;        clrf    bl
+;;        movff   res_rtempl,bh
+;;        movff   res_rtemph,ebl
+;;        clrf    ebh
+       
+;;        movfw   bl
+;;	    subwf   cl,0
+;;	    movfw   bh
+;;	    subwfc  ch,0
+;;        movfw   ebl
+;;	    subwfc  ecl,0
+;;        movfw   ebh
+;;	    subwfc  ech,0
+;;        jc				;;;herer xxx
+;;        goto    calu_res_over
+;;        incf    dl,1
+;;        jne_fd  dl,31		;;;yuan is 30
+;;        goto    calu_res_over
+;;	    goto    calu_res_lp
+;;;--------------------------------------
+;;calu_res_over:			;;;dl x 100 is res ture.
+;;        movfw   dl
+;;       addlw   0
+;;        jnz
+;;res_err_over:        
+;;        clrf    dl
+        return
+;;;==========================================
+ 
+;;==========================================           
+sub_res_calu2:
+        movlf   100-1,edh
+        clrf    dh
+        movff   dl,edl
+calu_res_olp:        	
+        movfw   edl
+	addwf   dl,1
+	movlw   00h
+	addwfc  dh,1
+	decfsz  edh,1
+	goto    calu_res_olp
+;;;-------------------------------------	
+	movff   dh,urev_rh		;;;09c4h = 2500 ohm   yuan is 1000 ohm 03e8h . 0709 2k5 3:09  ens
+        movff   dl,urev_rl
+;;;-------------------------------------
+        movfw   Unit_Flag		;;;because bit7,bit6 is unit.
+	andlw   0c0h
+	iorwf   urev_rh,1	
+	return 
+;;-------------------------------------------
+  
+
+
+
+;;;===================================================
+sub_test_res:				;;;ens   15/6/2k5
+	call    sub_clear_allint
+	
+;	btfss   sys_falg2,fb_r_type
+;	GOTO    res_start_a
+
+	Call    Sub_Dsp_Lcd_Null	
+	movlf   Lcdcho,LCD1
+	movlf   Lcdcho,LCD4	
+	
+	call	sub_t_res_start
+	call	sub_t_res_start
+	movlf   Lcdcho,LCD2
+	movlf   Lcdcho,LCD3
+	
+	movff   al,Res_RTempl
+	movff   ah,Res_RTemph
+	
+	return
+;;;-------------------------------------	
+;res_start_a:	
+;	call	sub_t_res_start
+;	call	sub_t_res_start
+;;	movff   al,Res_ZTempl
+;;	movff   ah,Res_ZTemph
+;	return
+;;;=====  res test over ================================
+;;;============================================
+Sub_res_table:			;;;total is 1366 = 0556h.
+;;;;;=============================================
+	addpcw	
+	retlw	124	;0	(work=0)
+	retlw	114	;1	(work=1)
+	retlw	110	;2	(work=2)
+	retlw	87 	;3	(work=3)
+	retlw	80 	;4	(work=4)
+	retlw	75;;;69 	;5	(work=5)
+	retlw	69;;;65 	;6	(work=6)
+	retlw	65;;58 	;7	(work=7)
+	retlw	55 	;8	(work=8)
+	retlw	64 	;9	(work=9)
+	retlw	46 	;A	(work=a)
+        retlw	41 	;b	(work=b)
+	retlw	40 	;C	(work=c)
+	retlw	35 	;d	(work=d)
+	retlw	34 	;E	(work=e)		                
+	retlw	31 	;F	(work=f)
+;;;==============================================
+	retlw	30	;0	(work=0)
+	retlw	28	;1	(work=1)
+	retlw	26	;2	(work=2)
+	retlw	25	;3	(work=3)
+	retlw	23	;4	(work=4)
+	retlw	22	;5	(work=5)
+	retlw	21	;6	(work=6)
+	retlw	20	;7	(work=7)
+	retlw	19	;8	(work=8)
+	retlw	19	;9	(work=9)
+	retlw	18	;A	(work=a)
+	retlw	17	;b	(work=b)
+        retlw	16      ;C	(work=c)
+	retlw	15	;d	(work=d)		
+	retlw	14	;E	(work=e)
+	retlw	13	;F	(work=f)
+;;;===============================================
+
+;;;=====================================================
+sub_t_res_start:
+;;        bsf     pt3en,b_res_out
+;;	bsf     pt3pu,b_res_out
+	call    sub_pt3_set
+        bcf     PT3,b_res_out
+        bsf     PT3,c_res
+  
+        movlw   d500ms
+	call    sub_delay_12m823
+	call    sub_clear_allint
+
+res_test_lp:
+        bcf     Int_Flag,fb_bf
+        bsf     tmcon,trst
+        clrf    ctbl
+        clrf    ctbh
+        movlf   10010000b,inte   ;;;[ GIE,0,0,TMIE,0,0,0,0]
+        movlf   00001111b,tmcon   ;;;[ TRST,0,0,0,TMEN,INS[3:0]]
+        call    test_up
+res_test_lp0:	     
+        bcf     pt3,6
+	bcf     pt3,7                    
+	return
+;;;----------------------------------
+test_up:
+        btfss   pt3,7
+        goto    test_up
+test_down:
+        btfss   pt3,7
+        goto    test_up_ok
+        goto    test_down
+test_up_ok:
+        Movlw   01H    		        
+	Addwf   CTBL,1 
+	Movlw   00h
+	Addwfc  CTBH,1
+	btfss   Int_Flag,fb_bf
+	goto    test_up
+	return
+;;;==============================================
+

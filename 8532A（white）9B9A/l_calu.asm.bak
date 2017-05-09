@@ -1,0 +1,245 @@
+;;;=========================================================
+;;; INPUT IS AdBuf0l, OUT BL.
+sub_calu_wkg:		;;; THIS IS PURE WEIGHT UNIT KG.   LESS THAN : IS 6000H=24576 = 245.76KG
+Sub_Calu_Weight:		;;;source: pure_counter
+	movff   AdBuf0l,al
+	movff   AdBuf0h,ah	
+;;;---------------------------------	
+	movfw	Cali_KBL
+	subwf	al,1
+	movfw	Cali_KBEL
+	subwfc	ah,1
+	Skip_If_MorE 
+	goto    calu_w_in_1		;;;use: AdBuf0l calu_weight
+	movff   al,eal
+	movff   ah,eah
+;;;---------------------------------	
+	movfw	Cali_KBH
+	subwf	eal,1
+	movfw	Cali_KBEH
+	subwfc	eah,1
+	Skip_If_MorE 
+	goto    calu_w_in_2		;;;use: al calu_weight
+	goto    calu_w_in_3		;;;use: eal calu_weight	
+;;;-----------------------------------------------------------------	
+calu_w_in_1:
+; source in ebx, eax (4byte)
+; object in ebxeax (8byte)
+; eax(msb)|ebx(lsb)=eax*ebx
+;;;-------------------------------------------
+	clrf    ebh
+	clrf    ebl
+	movlf   13h,bh
+	movlf   88h,bl		;;;1388h = 50.00kg   0FA0h = 40.00kg
+;;;-----------------------
+	clrf    eah
+	clrf    eal
+	movff   AdBuf0h,ah
+	movff   AdBuf0l,al
+	
+	call    sub_mul4   ;;;result in ebx   ;;;////
+;;;-------------------------------------
+; ebx = ebh / ecx
+        clrf     ech
+        clrf     ecl
+        movff    Cali_KBel,ch
+        movff    Cali_KBL,cl
+
+	call     sub_4div4	;;;result in ebx  is weght_in_s1
+;;;ADD  0KG IN S1
+	movlw	05h
+	addwf	BL,1
+	movlw	00h
+	addwfc	BH,1
+	movlw	00h
+	addwfc	EBL,1
+	movlw	00h
+	addwfc	EBH,1
+
+	return
+;;;------------------------------------------------
+
+;;;-----------------------------------------------------------------	
+calu_w_in_2:
+; source in ebx, eax (4byte)
+; object in ebxeax (8byte)
+; eax(msb)|ebx(lsb)=eax*ebx
+;;;-------------------------------------------
+	clrf    ebh
+	clrf    ebl
+	movlf   13h,bh
+	movlf   88h,bl		;;;1388h = 50.00kg   0FA0h = 40.00kg
+;;;-----------------------
+	clrf    eah
+	clrf    eal
+;;      pure counter in al  in s2
+	
+	call    sub_mul4   ;;;result in ebx
+;;;-------------------------------------
+; ebx = ebh / ecx
+        clrf     ech
+        clrf     ecl
+        movff    Cali_KBEH,ch
+        movff    Cali_KBH,cl
+
+	call     sub_4div4	;;;result in ebx  is weght_in_s2
+;;;ADD  50KG	IN S2   4000  IS 0fa0H 4005 = 0fa5h   5005 = 138dh
+	movlw	8dh
+	addwf	BL,1
+	movlw	13h
+	addwfc	BH,1
+	movlw	00h
+	addwfc	EBL,1
+	movlw	00h
+	addwfc	EBH,1
+	
+	return
+;;;------------------------------------------------
+
+;;;-----------------------------------------------------------------	
+calu_w_in_3:
+; source in ebx, eax (4byte)
+; object in ebxeax (8byte)
+; eax(msb)|ebx(lsb)=eax*ebx
+;;;-------------------------------------------
+	clrf    ebh
+	clrf    ebl
+	movlf   13h,bh
+	movlf   88h,bl		;;;1388h = 50.00kg   0FA0h = 40.00kg
+;;;-----------------------
+	movff   eah,ah
+	movff   eal,al    ;;;pure counter in eal
+	clrf    eah
+	clrf    eal
+	
+	call    sub_mul4   ;;;result in ebx
+;;;-------------------------------------
+; ebx = ebh / ecx
+        clrf     ech
+        clrf     ecl
+        movff    Cali_EKBEH,ch
+        movff    Cali_EKBH,cl
+
+	call     sub_4div4	;;;result in ebx  is weght_in_s2
+	
+;;;ADD  100KG  IN S3     8000 = 1f40h 8005 = 1f45h  10005 = 2715h
+	movlw	15h
+	addwf	BL,1
+	movlw	27h
+	addwfc	BH,1
+	movlw	00h
+	addwfc	EBL,1
+	movlw	00h
+	addwfc	EBH,1
+	return
+;;;------------------------------------------------
+;;;================================================
+
+
+
+;;;*************************************************
+Sub_Real_Wlbkg:		;;;;IN: EBX,   OUT :EAX
+		movff   ebh,eah
+		movff   ebl,eal
+		movff   bh,ah
+		movff   bl,al
+;;;-----------------------------
+		btfss   Unit_Flag,Unit_Kg
+		return
+;;;-----------------------------	
+; source in ebx, eax (4byte)
+; object in ebxeax (8byte)
+; eax(msb)|ebx(lsb)=eax*ebx
+;;;-------------------------------------------
+		clrf    ebh
+		clrf    ebl
+		movlf   2bh,bh		;;;22046 IS 561EH   11023 is 2b0fh
+		movlf   0fh,bl		;;;KG*22046/10000
+;;;-----------------------
+;;;  AL IS ALREADY IN	
+		call    sub_mul4   ;;;result in ebx
+;;;-------------------------------------
+; ebx = ebh / ecx
+        clrf     ech
+        clrf     ecl
+        movlf    27h,ch
+        movlf    10h,cl		;;;2710h = 10000.
+
+		call     sub_4div4	;;;result in ebx  is weght_in_s2
+	
+		movff   ebh,eah
+		movff   ebl,eal
+		movff   bh,ah
+		movff   bl,al
+calu_lb_out:
+        clrf    ech
+        clrf    ecl
+        clrf    ch
+   		movlw   10
+        movwf   cl
+
+		call     sub_4div4	;;;result in ebx  is weght_in_s1 	
+
+
+		clrf    eah
+		clrf    eal
+		clrf    ah		;;;22046 IS 561EH   11023 is 2b0fh
+		movlf   14h,al		;;;14h = 20  
+;;;-----------------------
+;;;  AL IS ALREADY IN	
+		call    sub_mul4   ;;;result in ebx
+ 		movff   ebh,eah
+		movff   ebl,eal
+		movff   bh,ah
+		movff   bl,al			
+		return
+;;;------------------------------------------------
+;;;;========================================
+; source in ebx, eax (4byte)
+; object in ebxeax (8byte)
+; eax(msb)|ebx(lsb)=eax*ebx
+; run cycle : ???
+;-------------------------------------------
+sub_mul4:
+	movff4       al,buffer11
+	movlf        32,counter1       ;32 bits
+	call         sub_cleareax
+kmul4_lp:
+	clrc
+	btfsc        bl,0
+	call         sub_add4b
+	rrf4b        eah
+	rrf4b        ebh
+	decfsz       counter1,1
+	goto         kmul4_lp
+	return
+sub_add4b:
+	add_4b       buffer11,al
+	return
+;-------------------------------------------
+;-------------------------------------------
+; 4bytes div 4bytes   ;;;use: ea eb,ec,ed, counter1,4 buffer
+; eax|ebx=eax|ebh/ecx
+; run cycle : ?????
+;-------------------------------------------
+sub_4div4:
+	movlf         32,counter1
+	clrf          buffer11
+	clrf          buffer12
+	clrf          buffer13
+	clrf          buffer14
+kdiv_lp:
+	clrc
+	rlf4b         bl
+	rlf4b         buffer11
+	movff4        buffer11,dl
+	call          sub_edx_ecx
+	jc
+	goto          kdivless
+	movff4        dl,buffer11
+	incf          bl,1
+kdivless:
+	decfsz        counter1,1
+	goto          kdiv_lp
+	return
+;;;;----------------------------------------------	

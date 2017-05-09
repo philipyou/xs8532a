@@ -1,0 +1,71 @@
+SEG2[3]   =LT[0];
+SEG7[6]   =LT[1];
+SEG7[7]   =LT[2];
+
+SEG4[0]   =ST1[5];
+SEG1[2]   =ST1[6];
+
+
+SEG1[0]   =ST2[4];
+SEG2[0]   =ST2[5];
+SEG2[5]   =ST2[6];
+SEG2[6]   =ST2[3];
+SEG2[4]   =ST2[2];
+SEG3[6]   =ST2[0];
+SEG1[3]   =ST2[1];
+
+SEG2[1]   =ST3[4];
+SEG5[0]   =ST3[5];
+SEG2[7]   =ST3[6];
+SEG1[5]   =ST3[3];
+SEG5[6]   =ST3[2];
+SEG3[5]   =ST3[0];
+SEG6[7]   =ST3[1];
+SEG4[3]   =ST3[7];
+
+
+SEG1[6]   =ST4[4];
+SEG1[1]   =ST4[5];
+SEG5[5]   =ST4[6];
+SEG5[1]   =ST4[3];
+SEG4[7]   =ST4[2];
+SEG4[5]   =ST4[0];
+SEG3[0]   =ST4[1];
+
+
+SEG2[2]   =SD1[4];
+SEG3[7]   =SD1[5];
+SEG5[7]   =SD1[6];
+SEG5[4]   =SD1[3];
+SEG5[2]   =SD1[2];
+SEG1[7]   =SD1[0];
+SEG1[4]   =SD1[1];
+
+
+SEG4[6]   =SD2[4];
+SEG3[1]   =SD2[5];
+SEG4[1]   =SD2[6];
+SEG5[3]   =SD2[3];
+SEG4[4]   =SD2[2];
+SEG4[2]   =SD2[0];
+SEG3[3]   =SD2[1];
+
+
+
+SEG3[4]   =RT[0];
+SEG3[2]   =RT[1];
+SEG7[0]   =RT[2];
+SEG7[1]   =RT[3];
+
+SEG7[2]   =RD[0];
+SEG7[3]   =RD[1];
+SEG7[4]   =RD[2];
+SEG7[5]   =RD[3];
+
+
+
+
+
+
+
+

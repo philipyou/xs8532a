@@ -1,0 +1,11 @@
+Number of devices is 1
+Dev 0:
+ Flags=0x0
+ Type=0x5
+ ID=0x4036001
+ LocId=0x22
+ SerialNumber=A70BK2LQ
+  Description=USB Serial Converter
+ ftHandle=0x0
+
+ ############### CSU8ICE ICE Opened, Handle is 10f2398 ##############

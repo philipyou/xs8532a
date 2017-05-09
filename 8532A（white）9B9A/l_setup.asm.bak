@@ -1,0 +1,287 @@
+;;;****************************************************
+;;;================================================
+sub_pt1_set:
+	MOVlF   00000000b,PT1EN   ;;;add pt2.6 is out,pull,out hige 0 IN ；1 OUT
+	MOVlF   11100000b,PT1PU   ;;;00h 上拉
+	MOVLF   11100000B,PT1 		
+	return
+	
+;;;================================================
+sub_pt2_set:		;;;changed the p2.5 to user key.  31/03/2k7  18:50
+	MOVlF   11100010b,PT2EN   ;;;add pt2.6 is out,pull,out hige 0 IN ；1 OUT
+	MOVlF   11111111b,PT2PU   ;;;00h 上拉
+	MOVLF   10011101B,PT2  	
+	MOVLF   00000000b,PT2MR	
+	return	
+;;;------------------------------------------------		
+sub_pt3_set:	;;;changed the this p3.6 to user_res test
+    	movlf   00h,aoenb3
+	return	
+;;;================================================
+sub_mp_option:
+	call    sub_clear_allint
+	call    sub_pt1_set
+	call    sub_pt2_set
+	call    sub_pt3_set
+	
+	CLRF    TMCON
+	movlf	00000000b,NETA		;(sinl[1:0],sens[1:0],0,0,0,0)  ADC输入端连接AIN0和AIN1 
+	movlf	01000110b,NETC		;(chopm[1:0],0,0,adg[1:0],aden,0)   PGA=64
+	movlf	00100011b,NETF		;(0,0,ENVDDA,0,0,0,0,ENVB)  ENVDDA,ENVB高电平使能	
+;.....................................
+; Control ADC
+;.....................................
+	movlf	00000101b,ADCON		;(0,0,0,0,0,adm[2:0]) ADC输出速率为ADCF/8000
+	movlf   10000010b,NETE      ;(LDOS[1:0],0,0,SILB[1:0],ENLB,0)
+      		
+	movlw   00110111B	;;;00100111b	01100111b	
+	movwf   LCDENR		;;;10101110B(x)		00100111B(v)           		
+	return
+sub_temp_set:
+
+        return			
+;;;==================================================
+;;;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Sub_Cali_adz_T:
+    	bcf     pt2,light
+    	incf    program_times,1
+    	movlw   0bh
+    	subwf   program_times,0
+    	btfsc   status,c
+    	goto    sub_rom_end
+        
+    	movlf   08h,adctimes
+cali_s0:		
+	call    Sub_Get_Adc
+	decfsz   adctimes,1
+	goto    cali_s0
+	bcf     pt2,light
+	call    sub_dsp_cal
+	call    sub_nflash_ntk1
+sub_cal_zero:	
+	call    sub_cali_locked		
+;	btfss   SYS_FLAG2,pin_conb
+;	goto    cali_out
+    	btfsc   pt2,cali_tb
+    	goto    sub_cal_zero
+;;;---------------------------------------
+	movff   AdBuf0l,Ad0_Zerol
+	movff   AdBuf0h,Ad0_Zeroh
+	call	sub_dsp_cal40
+	call    sub_nflash_ntk1
+;;;--------------------------------------------------
+cali_s1:			
+	call    sub_cali_locked
+;	btfss   SYS_FLAG2,pin_conb
+;	goto    cali_out            ;;;;key_err or p6,p7no con.
+;;;---------------------------------------
+	movfw   Ad0_Zerol
+	subwf   AdBuf0l,0
+	movwf   Cali_KBL
+	
+	movfw   Ad0_Zeroh
+	subwfc  AdBuf0h,0
+	movwf   Cali_KBEL
+	
+	btfss   STATUS,C           ;;;yes/no 
+	goto    cali_s1
+	
+	movlw   04h
+	subwf   Cali_KBEL,0
+	btfss   STATUS,C
+	goto    cali_s1	
+	btfsc   pt2,cali_tb
+	goto    cali_s1
+;;;---------------------------------------	
+	call	sub_dsp_cal80
+	call    sub_nflash_ntk1	
+;;;---------------------------------------------------------
+cali_s2:
+	call    sub_cali_locked
+;	btfss   SYS_FLAG2,pin_conb
+;	goto    cali_out            ;;;;key_err or p6,p7no con.
+;;;---------------------------------------
+	movfw   Ad0_Zerol
+	subwf   AdBuf0l,1
+	movfw   Ad0_Zeroh
+	subwfc  AdBuf0h,1
+
+	movfw   Cali_KBL
+	subwf   AdBuf0l,1
+	movfw   Cali_KBEL
+	subwfc  AdBuf0h,1
+
+	movff   AdBuf0h,Cali_KBEh
+	movff   AdBuf0l,Cali_KBH
+	
+	btfss   STATUS,C           ;;;yes/no 
+	goto    cali_s2
+	
+	movlw   04h	
+	subwf   Cali_KBEH,0
+	btfss   STATUS,C
+	goto    cali_s2
+	btfsc   pt2,cali_tb
+	goto    cali_s2	
+;;;---------------------------------------	
+	call	sub_dsp_cal120
+	call    sub_nflash_ntk1	
+;;;---------------------------------------------------------	
+	bsf     Ad_Flag,Adc_LD  ;;;large_Diffrence
+	btfss   STATUS,C
+	bcf     Ad_Flag,Adc_LD	;;;small_Diffrence 	
+;;;--------------------------------------------------
+cali_s3:		
+	call    sub_cali_locked
+;	btfss   SYS_FLAG2,pin_conb
+;	goto    cali_out            ;;;;key_err or p6,p7no con.
+;;;---------------------------------------
+	movfw   Ad0_Zerol
+	subwf   AdBuf0l,1
+	movfw   Ad0_Zeroh
+	subwfc  AdBuf0h,1
+
+	movfw   Cali_KBL
+	subwf   AdBuf0l,1
+	movfw   Cali_KBEL
+	subwfc  AdBuf0h,1
+        
+	movfw   Cali_KBH
+	subwf   AdBuf0l,1
+	movfw   Cali_KBEH
+	subwfc  AdBuf0h,1
+	        
+	movff   AdBuf0h,Cali_EKBEH
+	movff   AdBuf0l,Cali_EKBH
+;;;-----------------------------------------
+	btfss   STATUS,C           ;;;yes/no 
+	goto    cali_s3
+	
+	movlw   04h	
+	subwf   Cali_EKBEH,0
+	btfss   STATUS,C
+	goto    cali_s3
+	btfsc   pt2,cali_tb
+	goto    cali_s3
+;;;===========================================
+    	btfss   pt2,save               ;;;
+    	goto    save_eeprom	           ;;;eeprom save
+;;;------------------------------------------
+	movff   program_times,counter1
+;;;-------------------------------------------------------- 
+sub_otp_adds:
+        bcf     status,c    
+	movlw   0Eh		
+	addwf  Otp_addsL,1         ;;;changed addwfc  3/11/2k3
+	movlw   00h		
+	addwfc  Otp_addsH,1
+	decfsz   counter1,1
+	goto     sub_otp_adds	      	
+;;;;--------------------------------------------------------
+
+;;;-------------------------------------------------------- 
+        movff   Cal_point,Ram_xor
+        movlf   0Ah,scounter       
+		movlf   C3h,fsr0
+		
+sub_data_xor:
+        movfw    ind0
+        xorwf    Ram_xor,1
+        incf     fsr0,1
+        bcf      status,c
+		decfsz   scounter,1
+		goto     sub_data_xor
+;;;----------------------------------------------------
+cali_set_e2rom:
+        call    sub_dsp_pass	
+	movlw   d2s
+	call    sub_delay_12m823		
+;;;--------------------------------------------------------	        	
+	mc_write_ram_to_pro_scounter 0beh,16
+;;;;--------------------------------------------------------
+	bcf     ad_flag,weight0
+   	goto    Main_Sleep
+;;;------------------------------------------
+sub_rom_end:
+        call    Sub_Dsp_Lcd_Null
+	movlf   LcdchE,LCDB
+        Movlf   Lcdchn,LCDS
+        Movlf   Lcdchd,LCDG        
+	call    SUB_DSP_REAL	
+	movlw   d2s
+	call    sub_delay_12m823
+	bcf     ad_flag,weight0
+   	goto    Main_Sleep	
+;;;---------------------------------------
+save_eeprom:
+    	mc_write_ram_to_e2rom_scounter 00h,c0h,16
+    	call    sub_dsp_pass
+	movlw   d2s
+	call    sub_delay_12m823
+	bcf     ad_flag,weight0	
+	goto    Main_Sleep    
+;;;**************************************************
+sub_cali_locked:
+	movlf   Adf_SAdd,Adf_Times
+	clrf    Adf_old
+	clrf    Adf_oldh
+cali_S_loop:
+        bcf     SYS_FLAG2,pin_conb 
+	call    Sub_Get_Adc
+	btfsc   SYS_FLAG3,fb_key_type2	
+	return
+	bsf     SYS_FLAG2,pin_conb
+	movff   AdcBuf0el,AdBuf0el
+	movff   AdcBuf0h,AdBuf0h
+	movff   AdcBuf0l,AdBuf0l
+	call    Sub_Adc_Filter
+		
+	movff   Adbuf0h,AdBufferm   
+	movwf   AdBuf0h
+	movff   Adbuf0l,AdBufferl
+	movwf   AdBuf0l
+	call    Sub_Dsp_Lcd_Null
+	call    Sub_Dsp_Counter
+        call    sub_dsp_real
+
+;;	movfw   WL     			;;;;98h	;;;15000 counter  range
+;;	subwf   Adbuf0l,0       	;;;;
+;;	movfw   WH     			;;;;3DH     
+;;	subwfc  Adbuf0l1,0    	
+;;	Skip_If_MorE			;;Skip_If_Less	;;;test
+;;	goto    cali_s_loop
+	
+	je_fd   Adf_Times,03H		;;;lw_lock_times,04        ;;;04h
+	goto    cali_S_loop   
+	return
+;;;**********************************************
+
+;;;**********************************************
+sub_dsp_alah:	
+	clrf    eah
+	clrf    eal
+	CALL    sub_Hex2BCD
+
+	MOVFF   bH,AdBufferm
+	MOVFF   bL,AdBufferL
+
+	call    Sub_Dsp_Lcd_Null
+	call    Sub_Dsp_Counter
+	
+	movlf   Lcdchf,LCD5	
+        bsf     LCD5,lcd_cpp		;;;dsp st " / ".
+	return
+
+;;;***************************************************
+;;;   there delete set_p3 is key.   28/08/2k5   0:56
+;;;***************************************************
+sub_dspw_4bit:
+	movwf   LCDG
+	movwf   LCDS
+	movwf   LCDB
+	movwf   LCDQ
+	movwf   LCDW
+	movwf   LCDH
+	call    sub_dsp_real		
+	return
+;;;===================================================     

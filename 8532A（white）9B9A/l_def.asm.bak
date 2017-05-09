@@ -1,0 +1,307 @@
+key_hard        equ     pt1
+SDA     		EQU    	5
+SCL     		EQU    	6
+cali_tb         equ     7				;;;标定PIN针
+
+;;;***********************************************************
+hard_key		equ		pt2
+key				equ		0				;;;按键选单位
+unit	        equ     1				;;;拔动开关选单位
+bl_pin	        equ     2				;;;背光
+
+;;;*******ram_setup*******************************
+;;;===============================================
+Range           equ     80h
+open_weightl	equ     Range
+open_weighth	equ     Range+1
+R_Sub           equ     Range+2
+R_Subh          equ     Range+3
+Adf_Times       equ     Range+4
+weight_0_times  equ		Range+5
+weight_1_times	equ		Range+6
+
+buffer11        equ   	Range+7
+buffer12        equ   	Range+8
+buffer13        equ   	Range+9
+buffer14        equ   	Range+10
+
+
+lr_wl			equ     Range+11
+lr_wh			equ     Range+12
+
+momery_zerol 	equ    	Range+13
+momery_zeroh 	equ   	Range+14
+err_times    	equ    	Range+15 
+;;;eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+adf             equ     90h
+Adf_SAdd        equ     adf
+Adf_OAdd        equ     adf+15
+
+F_Adf1			equ     adf
+F_Adf1h			equ     adf+1
+F_Adf2			equ     adf+2
+F_Adf2h			equ     adf+3
+F_Adf3			equ     adf+4
+F_Adf3h			equ     adf+5
+F_Adf4			equ     adf+6
+F_Adf4h			equ     adf+7
+F_Adf5			equ     adf+8 
+F_Adf5h			equ     adf+9
+F_Adf6			equ     adf+10
+F_Adf6h			equ     adf+11
+F_Adf7			equ     adf+12
+F_Adf7h			equ     adf+13
+F_Adf8			equ     adf+14
+F_Adf8h			equ     adf+15
+;;;-----------------------------------------------
+AdBuf           equ     0a0h
+AdBuf0l         equ     AdBuf 
+AdBuf0h         equ     AdBuf+1
+AdBuf0el        equ     AdBuf+2
+
+adcbuf0l        equ     AdBuf+3
+adcbuf0h        equ     AdBuf+4
+adcbuf0el       equ     AdBuf+5
+
+AdBufferl		equ     AdBuf+6
+AdBufferm		equ     AdBuf+7
+AdBufferh		equ     AdBuf+8
+;;;----------------------------------------------
+delay_k1        equ     AdBuf+9
+
+delay_k2        equ     AdBuf+10
+
+lcd_temp	    equ     AdBuf+11
+counter1		equ     AdBuf+11	   
+LCDQ            EQU     AdBuf+12
+LCDB            EQU     AdBuf+13
+LCDS            EQU     AdBuf+14
+LCDG            EQU     AdBuf+15
+
+;;;***********VICTOR_E2ROM***********************
+E2RAMAD			EQU  	0B0H
+E2PCNT			EQU   	E2RAMAD         ;90H    ;;;GET SEND COUNTER
+KeyDown			EQU		E2RAMAD
+E2P_ADD			EQU   	E2RAMAD+1		;91H    ;;;ERR COUNTER	
+KeyTimes		EQU		E2RAMAD+1
+GET_BUFFER0		EQU   	E2RAMAD+2		;91H    ;;;GET DATA
+O_RTimes		equ   	E2RAMAD+2  
+SEND_DATA		EQU   	E2RAMAD+3		;91H
+O_RaddL			equ   	E2RAMAD+3
+WORD_ADRESS		EQU   	E2RAMAD+4		;91H
+O_RaddH			equ   	E2RAMAD+4
+;;;;**********************************************
+clr_raml		equ		0b0h
+clr_ramh		equ		0b1h
+
+Ad_Dsp0_Delay   equ     0b3h
+Ad_Dsp_Delay    equ     0b4h
+;;;===============================================
+
+F_F_adbl            equ     0b5h
+F_F_adbh            equ     0b6h
+
+counter2        equ     0b7h
+
+;;;--------------------------------------
+w_mem           equ     0bah
+w_memh          equ     0bbh
+
+Redun1          equ     0bch
+sz_temp			equ		0bch
+AdPause         equ     0bdh
+
+;;;===============================================
+e2data_adt0     equ     0c0h
+Cali_XORL       equ     e2data_adt0
+Cali_XORH       equ     e2data_adt0+1   
+Cali_KBL        equ     e2data_adt0+2
+Cali_KBEL       equ     e2data_adt0+3
+Cali_KBH        equ     e2data_adt0+4
+Cali_KBEH       equ     e2data_adt0+5
+Cali_EKBH       equ     e2data_adt0+6
+Cali_EKBEH      equ     e2data_adt0+7
+
+cAd0_Zerol      equ     e2data_adt0+8
+cAd0_Zeroh      equ     e2data_adt0+9
+
+Otp_addsL       equ     e2data_adt0+10     	;;;首地址
+Otp_addsH       equ     e2data_adt0+11
+OTP_dataL       equ     e2data_adt0+12   	;;;读出数据  
+OTP_dataH       equ     e2data_adt0+13
+OTP_writeL      equ     e2data_adt0+14
+OTP_writeH      equ     e2data_adt0+15
+;;;--------------------------------------------------------
+F_dl                equ   0d0h
+F_dh                equ   0d1h
+F_edl               equ   0d2h
+F_edh               equ   0d3h
+F_cl                equ   0d4h
+F_ch                equ   0d5h
+F_ecl               equ   0d6h
+F_ech               equ   0d7h
+F_bl                equ   0d8h
+F_bh                equ   0d9h
+F_ebl               equ   0dah
+F_ebh               equ   0dbh
+F_al                equ   0dch
+F_ah                equ   0ddh
+F_eal               equ   0deh
+F_eah               equ   0dfh
+;;;=====================================
+MR_E2P          EQU     0D8H
+MR_RLCDP        EQU     0D9H
+
+scounter        equ     0ddh
+;;;*************************************
+E2WS            equ     0E0h
+
+r_wl		    equ     E2WS
+r_wh		    equ     E2WS+1   
+
+Ad0_Zerol		equ     E2WS+2
+Ad0_Zeroh		equ     E2WS+3
+Ad0_Zeroel      equ     E2WS+4
+
+Radcel          equ     E2WS+5
+Radcl       	equ     E2WS+6
+Radceh          equ     E2WS+7
+Radch           equ     E2WS+8
+
+adctimes        equ     E2WS+9
+
+filter_xs     	equ    	E2WS+11
+new_templ    	equ    	E2WS+12
+;;;======================================
+
+Adf_old		    equ     E2WS+13
+Adf_oldh	    equ     E2WS+14
+
+Unit_Flag		equ     E2WS+15
+Unit_Lb         equ     6
+Unit_Kg         equ     7
+
+;;;***************************************
+pause           equ     0f0h
+adc_int_times   equ     pause
+adctimes1       equ     pause+1
+same_w_times	equ     pause+2
+weight_flag     equ     pause+3
+COUNTER0        EQU     pause+4
+A_BesL			equ		pause+5
+A_besH			equ		Pause+6
+
+;;;==============================================
+SYS_FLAG2	    equ     0fch
+program         equ     0
+nflash_ok		equ		2
+fb_zero     	equ		3
+bf_cal          equ     4
+bf_AutoOpen     equ     5
+bf_unit    	    equ     6
+bf_calkey		equ		6
+fb_unit		    equ     7
+;;;====================================================
+Ad_Flag			equ     0feh
+AdC_Err			equ     1
+weight0			equ     2
+Adc_LD     		equ    	3    ;;;Large_Diffrence
+Bat_err         equ     4
+;;;================================================
+Calu_Flag		equ     0ffh
+SYS_FLAG1	  	EQU   	0ffh   ;;;victor
+R_Is_MBE		equ     0
+scan_4zero      equ     6
+p_times         equ     7
+;;;************************************************
+/*
+RRam        EQU     0100h
+Ram1L       EQU     RRam
+Ram1H       EQU     RRam+1
+Ram2L       EQU     RRam+2
+Ram2H       EQU     RRam+3
+Ram3L       EQU     RRam+4
+Ram3H       EQU     RRam+5
+Ram4L       EQU     RRam+6
+Ram4H       EQU     RRam+7
+Ram5L       EQU     RRam+8
+Ram5H       EQU     RRam+9
+Ram6L       EQU     RRam+10
+Ram6H       EQU     RRam+11
+Ram7L       EQU     RRam+12
+Ram7H       EQU     RRam+13
+Ram8L       EQU     RRam+14
+Ram8H       EQU     RRam+15
+
+*/
+;-------------------------------------------
+; LCD Character table 
+;-------------------------------------------
+Lcdch0    equ   11010111b ;; d,e,g,f p,c,b,a ;;;10111110B       ;;;11001111B  f,g,e,d   a,b,c,p
+Lcdch1    equ   00000110b ;;;00000110B       ;;;00000110B
+Lcdch2    equ   11100011b ;;;01111100B       ;;;10101101B
+Lcdch3    equ   10100111b ;;;01011110B       ;;;00101111B
+Lcdch4    equ   00110110b ;;;11000110B       ;;;01100110B
+Lcdch5    equ   10110101b ;;;11011010B       ;;;01101011B
+Lcdch6    equ   11110101b ;;;11111010B       ;;;11101011B
+Lcdch7    equ   00000111b ;;;00001110B       ;;;00001110B
+Lcdch8    equ   11110111b ;;;11111110B       ;;;11101111B ;;;but only point dsp all.  0209ens
+Lcdch9    equ   10110111b ;;;11011110B       ;;;01101111B
+LcdchA    equ   01110111b ;;;11101110B       ;;;11101110B
+Lcdchb    equ   11110100b ;;;11110010B       ;;;11100011B
+LcdchC    equ   11010001b ;;;10111000B       ;;;11001001B
+Lcdchd    equ   11100110b ;;;01110110B       ;;;10100111B
+LcdchE    equ   11110001b ;;;11111000B       ;;;11101001B
+LcdchF    equ   01110001b ;;;11101000B       ;;;11101000B
+lcdchnull equ   00000000b                             ;;;add it    
+                        	  	 
+;;;;========D7,~D0.    		efgpabcdx 
+Lcdchi    equ   00000100b ;;;00000010B       ;;;00100000B   f,g,e,d   a,b,c,p
+LcdCHsg   equ   00100000b ;;;01000000B       ;;;00100000B
+
+LcdchL    equ   11010000b ;;;10110000B       ;;;11000001B
+Lcdcho    equ   11100100b ;;;01110010B       ;;;10100011B
+Lcdchbo   equ   11010111b ;;;10111110B       ;;;10100011B
+
+Lcdchu    equ   11000100b ;;;00110010B       ;;;11000111B
+Lcdchbu   equ   11010110b ;;;10110110B       ;;;11000111B
+LcdchP    equ   01110011b ;;;11101100B       ;;;11101100B
+
+Lcdchr    equ   01100000b ;;;01100000B       ;;;10100000B
+Lcdchn    equ   01100100b ;;;01100010B       ;;;11001110B
+LcdchH    equ   01110110b ;;;11100110B       ;;;10110110B
+Lcdcht    equ   11110000b ;;;11110000B       ;;;11110000B
+Lcdchs    equ   10110101b ;;;11011010B       ;;;01101011B
+Lcdchm_   equ   10000000b ;;;00010000b ;;01000000B
+Lcdch_    equ   00100000b ;;;01000000b ;;00010000B
+Lcdchs_   equ   00000001b ;;;00001000b ;;00001000B
+;;;------------------------------------------------------------------
+nlcd_9add       equ     48h
+nlcd_8add       equ     47h
+nlcd_7add       equ     46h
+nlcd_6add       equ     45h
+nlcd_5add       equ     44h
+nlcd_4add       equ     43h
+nlcd_3add       equ     42h
+nlcd_2add       equ     41h
+nlcd_1add       equ     40h   
+;;;----------------------------------------
+d10ms           equ     1
+d12m8           equ     1
+d25ms           equ     2
+d20ms           equ     2
+d40ms           equ     3
+d50ms           equ     4
+d100ms          equ     8
+
+d150ms          equ     12
+d166ms          equ     13
+d200ms          equ     15
+d250ms          equ     19
+d500ms          equ     39
+d1s             equ     78
+d1s5            equ     117
+d2s             equ     156
+d3s             equ     255
+;;;----------------------------------------------
+i_stable_times  equ    	09h
