@@ -1,0 +1,605 @@
+;;;****************************************************
+Sub_Test_Battery:
+        bcf     Ad_Flag,AdC_Err  	;;;pause_low_test          
+        btfsc   svd,lbout
+        return
+		movlw   100
+		call    sub_delay_1ms
+				
+        btfsc   svd,lbout
+        return		
+battery_low:
+        bsf     Ad_Flag,AdC_Err  	;;;pause_low_test
+        return
+;;;***************************************************
+sub_clear_allint:
+		clrf    INTF
+		clrf    INTE	
+		return
+;;;************************************************
+sub_delay_s:
+		movwf	Redun1
+de_12m823:
+		movlw	d3s
+		call	sub_delay_12m823
+		decfsz	Redun1,1
+		goto	de_12m823
+		return
+;;;================================================
+sub_delay_12m823:
+		movwf   delay_k1 
+de_12m1:
+		movlf   0ffh,delay_k2
+de_12m2:
+		nop
+		decfsz  delay_k2,1
+		goto    de_12m2
+		decfsz  delay_k1,1
+		goto    de_12m1
+		return	
+;;;=============================================
+sub_delay_1ms:
+		movwf   delay_k1 
+de_1m1:
+		movlf   16,delay_k2
+de_1m2:
+		nop
+		decfsz  delay_k2,1
+		goto    de_1m2
+		decfsz  delay_k1,1
+		goto    de_1m1
+		return	
+;;;******************************************
+Sub_Get_Pure_WC:       
+        movlf   Ad0_Zerol,fsr0
+        movff2   AdBuf0l,A_BesL
+        call    Sub_Sub_Abs_BES
+        movff   R_Sub,adbuf0l
+        movff   R_Subh,adbuf0h
+		movff   Calu_Flag,weight_flag        
+        clrf    adbuf0el
+        return
+;;;=====================================
+sub_Calu_Flag:
+		clrf    bl
+		clrf    bh
+	    bsf     ad_flag,weight0
+		return
+;;;======================================
+sub_Calu_Flag1:
+        btfsc   weight_flag,R_Is_MBE
+        return
+        clrf    bl
+        clrf    bh
+        bsf     ad_flag,weight0
+        return		
+;;;=====================================
+sub_samll_weight:
+        btfss   weight_flag,R_Is_MBE
+        goto    sub_samll_p   ;;; '-'
+	    movlw   064h          ;;;500 = 1f4h   490 = 1eah  '+'100 = 64h
+	    subwf   bl,0
+	    movlw   00h
+	    subwfc  bh,0
+	    jnc				;btfsc		Status,C
+	    return	
+;;;--------------------------------------       
+sub_samll_p:
+        movlw     60h                        ;;;old320 = 140h   250 = fah  96 = 60h
+        subwf     bl,0
+        movlw     00h
+        subwfc    bh,0
+        jnc        
+        goto      sub_samll_weight1   ;3.2kg<=bh&l<4.9kg    
+		movfw     adf_times
+        addlw     0ffh-03h                 ;;;7~8s
+        jc
+        goto      sub_samll_weight0
+sub_samll_zero:       
+        movlf   adcbuf0l,fsr0
+        movff2   cad0_zerol,A_BesL
+        call    Sub_Sub_Abs_BES
+	    movfw   open_weightl            ;;; 小于+/-3KG追零范围
+        subwf   R_Sub,0
+	    movfw   open_weighth
+        subwfc  R_Subh,0
+        btfsc   status,c
+        goto    sub_samll_weight0        
+	    movff   AdcBuf0l,Ad0_Zerol                        
+	    movff   AdcBuf0h,Ad0_Zeroh	    
+sub_samll_weight0:
+	    movfw       bl
+	    subwf       open_weightl,0
+	    movfw       bh
+	    subwfc      open_weighth,0
+	    bsf         ad_flag,weight0	    
+	    btfss       STATUS,C             ;;;是否大于起称重量	    
+	    bcf         ad_flag,weight0      ;;;大于起称重量为没有下称	    	                     	
+	    clrf      bl 
+	    clrf      bh
+	    return
+;;;=====================================
+sub_samll_weight1:
+        btfsc     weight_Flag,R_Is_MBE
+        goto      sub_Calu_Flag            ;;'+'
+		movfw     adf_times
+        addlw     0ffh-08h                 ;;;7~8s
+        jc
+        goto      sub_samll_weight0
+        goto      sub_samll_zero 
+                    
+;;;********changed 12/3/2k3 14:47***********************************
+;;;*****************************************************
+SUB_WC_MEM_APP:			;;;	50/128=0.3906kg
+		movlf   r_wl,fsr0   
+		movff2   w_mem,A_BesL    		;;;;|down-up|   
+		call    Sub_Sub_Abs_BES		;;;;|ind1-ind0|
+		movlw   20h		;;;this is is 0.3nkg,
+		subwf   R_Sub,0
+		movlw   00H
+		subwfc  R_Subh,0   	;;;	c=0 in range ,same as  wcurrent & w_mem	
+		jnc
+		RETURN
+;;;-------------------------------------
+mem_as:				;;;	c=0 as mem
+		movff   w_mem,bl
+		movff   w_memh,bh
+		RETURN
+;;;*****************************************************
+sub_nflash_ntk:		;;;new flash no test key.
+ 		bcf     sys_flag2,nflash_ok
+        movlf   03h,new_templ
+nflash_ntk:
+		call	Sub_Dsp_Lcd_Null
+		call    sub_ifdsp_dotu
+        movlf   03h,counter2
+nflash_ntkk:
+		btfsc	SYS_FLAG2,bf_cal
+		goto	nflash_delay1		;;;标定闪显                                 
+        call    sub_t_adc_z
+        btfsc   sys_flag2,fb_zero
+        goto    nflash_ntok
+        decfsz  counter2,1
+        goto    nflash_ntkk
+        goto	nflash_open
+nflash_delay1:
+		movlw	3
+		call	sub_delay_s
+;;;--------------------------------------------------
+nflash_open:
+		movff	w_memh,bh
+		movff	w_mem,bl
+		call    Sub_Real_Wlbkg    ;;;;IN: EBX,   OUT :EAX		
+		clrf    eal
+		clrf    eah
+		call    sub_dsp_weight		
+        movlf   05h,counter2         
+;;;----------------------------------------------------
+nflash_ntkb:
+		btfsc	SYS_FLAG2,bf_cal
+		goto	nflash_delay2		;;;标定闪显 
+				
+        call    sub_t_adc_z
+        btfsc   sys_flag2,fb_zero
+        goto    nflash_ntok
+        decfsz  counter2,1
+        goto    nflash_ntkb
+        goto	nflash_go
+        
+nflash_delay2:
+		movlw	4
+		call	sub_delay_s 
+                        
+nflash_go:								
+        decfsz  new_templ,1
+        goto    nflash_ntk
+	    return
+;;;------------------------------------------------------  
+nflash_ntok:
+        bsf     sys_flag2,nflash_ok
+        return     
+;;;-------------------------------------------------------	    
+sub_t_adc_z:
+		call    Sub_Get_Adc          ;;;
+        call    Sub_Get_Pure_WC
+		CALL    sub_calu_wkg
+        movlf   bl,fsr0
+        movff2   lr_wl,A_BesL
+        call    Sub_Sub_Abs_BES						
+	    
+	    movlw   90h
+	    subwf   R_Sub,0             ;;;03e8h = 1000   190H = 400/8 = 5.0KG  
+	    movlw   01h
+	    subwfc  R_Subh,0
+	    bcf     sys_flag2,fb_zero
+	    btfss   status,c            
+	    return
+	    bsf     sys_flag2,fb_zero
+	    return
+;;;*******************************************************
+sub_nflash_ntk1:		;;;new flash no test key.
+        movlf   02h,counter1
+nflash_ntk1:               
+        clrf	lcd9        
+ 	 	movlw   3
+		call    sub_delay_s
+		      
+		call    sub_ifdsp_dotu		
+ 	 	movlw   5
+		call    sub_delay_s		
+        decfsz  counter1,1
+        goto    nflash_ntk1
+	    return
+;;;#########################################
+; HexCode to BCDCode Transfer
+;-------------------------------------------
+; Max Translation
+;(FFFFFF)16 in EAX to(16777215)10 in EBX
+; Run cycle : 1611
+;-------------------------------------------
+sub_Hex2BCD:  
+		clrf	BL
+		clrf	BH
+		clrf	EBL
+		clrf	EBH
+
+		movlf	24,counter0
+		clrc
+BCD_Lp:
+		rlf	AL,1
+		rlf	AH,1
+		rlf	EAL,1
+		rlf4b	BL
+		decfsz	counter0,1
+		goto	AdjDec
+		return
+AdjDec:
+		movlf	BL,FSR0
+		call	sub_AdjBcd
+		movlf	BH,FSR0
+		call	sub_AdjBcd
+		movlf	EBL,FSR0
+		call	sub_AdjBcd
+		movlf	EBH,FSR0
+		call	sub_AdjBcd
+		goto	BCD_Lp
+;;;-----------------------------  
+sub_AdjBcd:  
+		movlw	03h
+		addwf	00h,0
+		btfsc	WORK,3
+		movwf	00h
+		movlw	30h
+		addwf	00h,0
+		btfsc	WORK,7
+		movwf	00h
+		return
+;;;-------------------------------------------------------
+MR_BAT_ERR:
+		CALL    Sub_Lowbat_Dsp
+;;;-------------------------------------
+MR_ERR_DSP_DELAY:	
+       movlf   10011001b,wdtcon   ;;4s      
+       nop
+       nop
+       sleep
+       nop
+       nop			
+MR_ERR_Sleep:
+		GOTO    main_kmg
+;;;********************************************************
+sub_cleareax:
+cleareax:
+		clrf          al
+		clrf          ah
+cleareal:
+		clrf          eal
+		clrf          eah
+		return
+	
+;==================================
+sub_edx_ecx:
+edx_ecx:
+		sub_4b        dl,cl
+		return
+;;;==========================================
+
+;;;==========================================
+sub_adbuf0l_div2:
+		Byte_3Div2   AdBuf0l
+		return             
+;;;===================================== 
+sub_adf_all_add:
+		clrf    AdBuf0l
+		clrf    AdBuf0h
+		clrf    AdBuf0el
+		movlf   Adf_SAdd,fsr0
+Adc_All_Add:	
+		movfw   ind0
+		addwf   AdBuf0l,1
+		incf	fsr0,1
+		
+		movfw   ind0
+		addwfc  AdBuf0h,1         ;;;changed addwfc  3/11/2k3
+		movlw   00h
+		addwfc  AdBuf0el,1
+		incf	fsr0,1
+		
+		JE_FD   fsr0,AdBuf0l     ;;;ok?????   ok see it add 1 is 0a0h.
+		goto    Adc_All_Add
+		return
+;;;=========================================
+
+
+;;;*****************************************	
+Sub_Sub_Abs_BES:    ;;;;|ind1-ind0|    ;;;0 nested		;;;changed fr:   1:50 04092k5 0409ens	
+		movfw    ind0
+		subwf    A_BesL,0    ;;;ind1 m.
+		movwf    R_Sub
+	
+		incf	 fsr0,1
+;;		incf	 fsr1,1
+		
+		movfw    ind0
+		subwfc   A_BesH,0    ;;;ind1 m.
+		movwf    R_Subh    
+	
+		bsf      Calu_Flag,R_Is_MBE
+		btfsc    STATUS,C  
+		Return			;;;c=1 ,m >= s.
+		bcf      Calu_Flag,R_Is_MBE
+		decf	 fsr0,1
+;;		decf	 fsr1,1
+	
+		movfw    A_BesL
+		subwf    ind0,0    ;;;ind1 m.
+		movwf    R_Sub
+	
+		incf	 fsr0,1
+;;		incf	 fsr1,1
+	
+		movfw    A_BesH
+		subwfc   ind0,0    ;;;ind1 m.
+		movwf    R_Subh
+	
+		return
+;;;*********************************************************
+Sub_Co_Last_Adc:	;;new 23/6/2k3  fILTER_USED 23/6/2K3 used 0.1953kg 
+		movlf   AdBuf0l,fsr0
+		movff2   Adf_old,A_BesL    		;;;;|down-up| 
+		call    Sub_Sub_Abs_BES		;;;;|ind1-ind0|
+		movfw   Cali_KBL+1		;;;counter same no divdid by unit.  30/03/2k7   03:06
+
+		subwf   R_Sub,0
+		movlw   00h
+		subwfc  R_Subh,0
+;;;---------------------------------------------------------	
+		bsf     Ad_Flag,Adc_LD  ;;;large_Diffrence
+		btfss   STATUS,C
+		bcf     Ad_Flag,Adc_LD	;;;small_Diffrence 	
+		return
+;;;*****************************************
+sub_if_locked_o:
+		movlf   r_wl,fsr0   
+		movff2   lr_wl,A_BesL    		;;;;|down-up|   
+		call    Sub_Sub_Abs_BES		;;;;|ind1-ind0|
+
+		movlw   12h		            ;;;this is is 0.2nkg,
+		subwf   R_Sub,0
+		movlw   00H
+		subwfc  R_Subh,0   	        ;;;	c=0 in range ,same as  wcurrent & w_mem	
+ 	   jc
+  	  goto    locked_f
+		clrf    same_w_times
+ 	   return
+locked_f:	
+		incf    same_w_times,1
+		return
+;;;---------------------------------------------
+sub_kgerr_range:
+sub_err_range:		;;;1821kg = 071dh x 10	
+		movlw   AAh	         ;;;;18300 = 477ch    18090 = 46AAH
+		subwf   bl,0
+		movlw   46h
+		subwfc  bh,0
+err_range_com:	
+		bsf     Ad_Flag,AdC_Err
+		jc	
+		bcf     Ad_Flag,AdC_Err
+		return
+;;;*****************************************
+Sub_Adc_Filter:		;;;changed the zero shift to ex,inoder to protect the zero pure.
+		movlf   AdBuf0l,fsr0
+		movff2   Adf_old,A_BesL    		;;;;|down-up| 
+		call    Sub_Sub_Abs_BES		;;;;|ind1-ind0|
+		MOVfw   filter_xs
+		subwf   R_Sub,0
+		movlw   00h
+		subwfc  R_Subh,0	
+		
+		movff   AdBuf0l,Adf_old
+		movff   AdBuf0h,Adf_oldh
+	
+		btfss   status,c	
+		goto    Adc_Filter_R1
+	
+		call    sub_clr_adbuf		;;;CLBUF_A_FT    F_Adf1,F_Adf1+0FH
+		clrf    Adf_Times
+		return		    		;;;dsp_this_and_no_need_save
+;;;------------------------------------------
+Adc_Filter_R1:
+;;;------------------------------------------
+		movfw   Adf_Times
+		andlw   00001111b
+		movwf   Adf_Times 
+		incf    Adf_Times,1
+;;;==========================================
+ 	   incf    i_stable_times,1
+		je_fd   Adf_Times,i_stable_times
+		goto    Adf_Load_Over
+;;;-------------------------------------
+		movlf   i_stable_times,Adf_Times
+;;;-------------------------------------	
+Adf_Load_Over:
+;;;=================================================
+		movfw   Adf_Times
+		andlw   00101111b
+		addpcw
+		goto    adf_8all_times	
+		goto    adc_fi_load1
+		goto    adc_fi_load2
+		goto    adc_fi_load3
+		goto    adc_fi_load4
+		goto    adc_fi_load5
+		goto    adc_fi_load6
+		goto    adc_fi_load7
+	
+		goto    adc_fi_load8
+		goto    adc_fi_load9
+		goto    adc_fi_loada
+		goto    adc_fi_loadb	
+		goto    adc_fi_loadc		
+		goto    adc_fi_loadd		
+		goto    adc_fi_loade		
+		goto    adc_fi_loadf
+;;;---------------------------------------
+adc_fi_load1:
+        movff2  AdBuf0l,F_Adf1
+adc_fi_load2:
+        movff2  AdBuf0l,F_Adf2	
+adc_fi_load3:
+        movff2  AdBuf0l,F_Adf3
+adc_fi_load4:
+        movff2  AdBuf0l,F_Adf4		
+adc_fi_load5:
+        movff2  AdBuf0l,F_Adf5
+adc_fi_load6:
+        movff2  AdBuf0l,F_Adf6	
+adc_fi_load7:
+        movff2  AdBuf0l,F_Adf7
+adc_fi_load8:
+        movff2  AdBuf0l,F_Adf8		
+;;;-------------------------------------------------
+adf_8all_times:
+		call    sub_adf_all_add
+		call    sub_adbuf0l_div2
+		call    sub_adbuf0l_div2
+		call    sub_adbuf0l_div2
+		movff   AdBuf0l,Adf_old
+		movff   AdBuf0h,Adf_oldh
+		return
+;;;*************************************************
+adc_fi_load9:
+adc_fi_loada:
+adc_fi_loadb:
+adc_fi_loadc:	
+adc_fi_loadd:	
+adc_fi_loade:	
+adc_fi_loadf:
+        movff2  AdBuf0l,F_Adf8
+        movff2  F_Adf8,F_Adf7
+        movff2  F_Adf7,F_Adf6
+        movff2  F_Adf6,F_Adf5
+        movff2  F_Adf5,F_Adf4
+        movff2  F_Adf4,F_Adf3
+        movff2  F_Adf3,F_Adf2                                                
+        movff2  F_Adf2,F_Adf1
+        goto    adf_8all_times
+;;;=================================================	
+sub_fill_ram:
+		incf    clr_ramh,1
+		movff   clr_raml,fsr0
+C_Buf_L:
+		movlf   0ffh,ind0
+		incf    fsr0,1
+		je_ff   fsr0,clr_ramh
+		goto    C_Buf_L
+		return
+;;;-----------------------------------------	
+sub_clr_adbuf:
+		movlf   F_Adf1,clr_raml
+		movlf   F_Adf8h,clr_ramh
+sub_clr_ram:
+		incf    clr_ramh,1
+		movff   clr_raml,fsr0
+C_Buf_L0:
+		clrf    ind0
+		incf    fsr0,1
+		je_ff   fsr0,clr_ramh
+		goto    C_Buf_L0
+		return
+;;;-----------------------------------
+
+;;;=================================================
+sub_if_weight_o:        
+        je_fd	bh,0
+        goto	sub_weight_times
+        je_fd	bl,0
+        goto	sub_weight_times            	
+       	clrf    same_w_times
+       	incf	weight_0_times,1
+       	clrf	weight_1_times
+		return
+;;;------------------------------------------
+sub_weight_times:
+		incf	weight_1_times,1
+		clrf	weight_0_times
+		return             
+;;;===========================================
+momery_zero:
+		bcf     sys_flag1,scan_4zero
+		clrf    wdtcon
+		movlf   01h,pck
+		movlf   01001010b,mck
+		nop
+		nop
+ 	   movfw   mck
+	    nop
+ 	   nop
+		clrf    intf
+		clrf    inte
+		call    sub_clear_allint
+		call    sub_pt1_set
+		call    sub_pt2_set
+	
+		CLRF    TMCON
+		movlf	00100001b,NETF		;(0,0,ENVDDA,0,0,0,0,ENVB)  ENVDDA,ENVB高电平使能	
+		movlf	00000111b,ADCON		;(0,0,0,0,0,adm[2:0]) ADC输出速率为ADCF/8000
+;;;---------------------------------------------------------------------
+		movlf   04h,adctimes
+adc_w0:		
+		call    Sub_Get_Adc
+		decfsz   adctimes,1
+		goto    adc_w0
+			
+		movlf   Adf_SAdd,Adf_Times
+		clrf    Adf_old
+		clrf    Adf_oldh
+		movlf   30h,sz_temp	
+mw_loop1:
+		decfsz  sz_temp,1
+		goto	mw_sz_loop2
+		goto    sleep_no_weight0  
+mw_sz_loop2:	
+		call    Sub_Get_Adc
+		call    Sub_Adc_Filter
+
+		je_fd   Adf_Times,03H		;;;lw_lock_times,04        ;;;04h
+		goto    mw_loop1
+		clrf    momery_zerol
+		clrf    momery_zeroh	
+  	  	mc_clrf
+  	  	bsf     sys_flag1,scan_4zero	
+		goto    main_kmg		
+;;;================================= 
+sub_calu_openweight:
+        movff   cali_kbl,al
+        movff   cali_kbel,ah
+        bcf     status,c
+        rrf_2div2   al
+        rrf_2div2   al
+        rrf_2div2   al
+        rrf_2div2   al        ;;;3.125kg
+        movff2      al,open_weightl
+        return
+             	     		         	

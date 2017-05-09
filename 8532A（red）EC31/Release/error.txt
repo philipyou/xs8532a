@@ -1,0 +1,30 @@
+--- cs_bf.asm
+--- csu18mx86.inc
+--- l_com.asm
+--- l_def.asm
+--- l_macro.asm
+--- l_interrupt.asm
+--- l_standby.asm
+--- l_poweron.asm
+--- l_main_weight.asm
+--- l_ad.asm
+--- l_lcd.asm
+--- l_led.asm
+--- l_setup.asm
+--- l_glue.asm
+--- l_calu.asm
+--- scan_key.asm
+--- l_adcfilter.asm
+--- otp_program.asm
+--- eep.asm
+--- compare.asm
+--- l_bmi_set.asm
+--- l_temperature.asm
+--- testmode.asm
+生成Hex文件.
+
+目标器件 :CSU18M83
+CodeOption  : CodeOption0:0x0001;
+Checksum : EC31
+D:\youzr\repositories\8532A（red）EC31\//cs_bf.asm
+共用程序空间 ：5007×16 bits ( 61.12% )

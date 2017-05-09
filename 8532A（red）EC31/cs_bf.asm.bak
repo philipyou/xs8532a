@@ -1,0 +1,243 @@
+;;;--------------------------------------------------------------
+;;;
+;;;******************************************************************
+include csu8rp1183.inc
+include l_Def.asm
+include l_macro.asm
+;====================================================================
+	    Org     0
+MReset:
+		Goto    Main_Start
+		Goto    Main_Start
+		Goto    Main_Start
+		Goto    Main_Start	
+		Org     4
+		Goto    Int_All
+;;===================================================================
+Main_Start:
+		nop
+		nop
+		nop
+		nop
+		nop
+		nop
+		movlf   01h,pck
+    	movlf   01000100b,mck            ;;;4 MHZ   指令周期：2m		               
+        nop     
+		nop
+        btfsc	status,to
+        goto    main_kmg                  ;;;上电复位
+        goto    main
+;;;************************************************************
+;;;   待机模式
+;;;
+;;;************************************************************
+main_kmg:
+        clrwdt
+	    clrf    wdtcon	
+	    movlf	00100001b,NETF		;(0,0,ENVDDA,0,0,0,0,ENVB)  ENVDDA,ENVB高电平使能    
+	    movlf   11000000b,NETE      ;(LDOS[1:0],0,0,SILB[1:0],ENLB,0)
+;;;------------------------------------------------------------------------------------- 
+test_adc:                           ;读四次AD值		
+		call    Sub_Get_hAdc    
+		mc_clrf   
+		call    Sub_Get_Pure_WC    
+;;;-----------------------------------------------------------------------       		
+  	   btfss   Calu_Flag,R_Is_MBE
+  	   goto    sleep_up_weight       ;;;负重量去下称并进入睡眠  		
+	   movfw   open_weightl
+	   subwf   AdBuf0l,0
+	   movfw   open_weighth
+	   subwfc  AdBuf0h,0	   
+	   btfss   STATUS,C              ;;;auto weight 
+	   goto    auto_sleep            ;;;小于起称重量，进入睡眠
+;;;---------------------------------------------------------
+       bsf     Sys_Flag2,bf_AutoOpen
+       btfsc   ad_flag,weight0       ;;;判断是否下称
+       goto    sub_weight0_ok             
+       goto    sleep_no_weight0      ;;;没有下称 
+;;;--------------------------------------------	
+sub_weight0_ok:
+	   call    sub_mp_option    		
+	   call		mw_read_e2rom			;;;读E2PROM       	          		    	
+	   goto    mw_start			      	;;;进入称重模式  	        
+;;;--------------------------------------------------------
+auto_sleep:
+       movlw   2dh
+       subwf   momery_zerol,0
+       movlw   28h
+       subwfc   momery_zeroh,0
+       btfsc   STATUS,C
+       goto    momery_zero        
+       movlw   01h
+       addwf   momery_zerol,1
+       movlw   00h
+       addwfc  momery_zeroh,1
+       
+       btfsc   ad_flag,weight0       ;;;判断是否下称
+       goto    sleep_no_weight0      ;;;已下称，不再判断是否下称
+
+       movff   open_weightl,al
+       movff   open_weighth,ah
+              
+       movlw   10h
+       subwf   al,1
+       movlw   00h
+       subwfc  ah,1
+       bcf     status,c
+             
+	   movfw   al
+	   subwf   AdBuf0l,0
+	   movfw   ah
+	   subwfc  AdBuf0h,0
+	   btfss   STATUS,C              ;;;auto weight
+sleep_up_weight:	          
+       bsf     ad_flag,weight0       ;;;小于起称重量 - 30h(6*8=48) 则设下称标定      
+sleep_no_weight0:               
+       movlf   01001010b,mck
+       nop
+       nop    
+       movlf   10000100b,wdtcon   ;;1.4s      
+       nop
+       nop
+       sleep
+       nop
+       nop
+;;;********************************************************
+;;;  称重模式
+;;;
+;;;********************************************************
+main:
+		call	mw_clrf_ram				;;;清除RAM	  
+		call    sub_mp_option			;;;寄存器初始化
+		call	Sub_Dsp_Lcd_All			;;;全显	    	   	   
+		movlw   d1s
+		call    sub_delay_12m823	
+		call	mw_read_e2rom			;;;读E2PROM
+		call	mw_sz_zero				;;;获取零点	    	
+;;;-------------------------------------------
+mw_start:
+		call	sub_weight_initialize	;;;称重前RAM初始化   
+;;;-------------------------------------------	
+mw_go1:
+		movfw   weight_0_times
+        addlw   0ffh-037h                 ;;;显示0.0 kg的关机时间   9s
+        jnc
+		goto    main_kmg
+;;;-------------------------------------------
+		movfw	weight_1_times
+		addlw	0ffh-07bh				  	;;;不稳定关机时间   20s
+		jnc
+		goto	mp_weight_over
+;;;-------------------------------------------	
+		call	sub_scan_unit
+		btfsc	sys_flag2,fb_unit
+		goto	mw_go2		    			;;;拔动有效     	             
+		call	sub_scan_key			  	;;;按键扫描处理（默认按键有效）
+		btfsc	 Sys_Flag2,bf_unit			;;;按键选单位
+		call     Sub_Get_Unit		
+		btfsc   SYS_FLAG2,bf_cal			;;;按键进入标定
+		call    Sub_Cali_adz_T
+mw_go2:		
+		btfss	key_hard,cali_tb			;;;pin针进入标定
+		call	Sub_Cali_adz_T
+;;;-------------------------------------------				 			
+		call    Sub_Get_Adc					;;;;获取AD值	
+		call    Sub_Get_Pure_WC				;;;计算相对变化量
+		call    Sub_Adc_Filter    			;;;;滤波 enter:AdBuf0l   ;;;outport: AdBuf0l
+		call    sub_calu_wkg   				;;;;计算重量 input AdBuf0l ;;ouput bl,bh,ebl and this is all kg.
+		call	sub_samll_weight        	;;;;min samll weight
+		call	sub_if_weight_o         	;;;;yes/no dsp 0.0kg
+;;;-------------------------------------------
+		je_fd   weight_0_times,01h
+		goto    mw_go3
+		btfss   sys_flag2,bf_AutoOpen
+		goto    mw_go3
+		goto    Main_Start             		;;;防误开机    
+		
+mw_go3:
+        bcf     sys_flag2,bf_AutoOpen
+;;;-------------------------------------------
+		call    Sub_Test_Battery
+		btfsc   Ad_Flag,AdC_Err    			;;;低电检测
+		goto    MR_BAT_ERR        	
+		movff   bl,r_wl 
+		movff   bh,r_wh
+		call   	SUB_WC_MEM_APP          	;;;;记忆 yes/no 0.3kg	
+		movff   bl,r_wl 
+		movff   bh,r_wh
+		  	
+		call    sub_kgerr_range				;;;cl is range,BL is KG weight.  18/01/2k6  17:56
+		BTFSS   Ad_Flag,AdC_Err
+		goto    mp_calu_rw
+		incf    err_times,1
+		movlw   02h                			;;;两次出ERR才认为是ERR
+		subwf   err_times,0
+		btfss   status,c
+		goto    mp_over_off					
+		call    sub_over_err
+		btfsc   err_times,3         		;;;是否显示ERR四次  2秒，若是关机
+		goto    Main_Start	
+ 		goto    mp_dsp_wo
+mp_over_off:
+        movlf   aah,bl
+        movlf   46h,bh
+        movlf   aah,r_wl
+        movlf   46h,r_wh
+        goto    mp_calu_rw1		
+;;;=================================================	
+mp_calu_rw:
+        clrf    err_times
+mp_calu_rw1:
+		call    Sub_Real_Wlbkg    			;;;;转换当前单位		
+		clrf    eal
+		clrf    eah
+		call    sub_dsp_weight				;;;送显示		
+mp_dsp_wo:
+;;;----------------------------------------
+		call    sub_if_locked_o				;;;是否稳定
+		movff   r_wh,lr_wh
+		movff   r_wl,lr_wl       
+		jne_fd  same_w_times,05h			;;;稳定次数达到，锁定重量
+		goto    mw_lc_over	
+mw_go6:
+		goto    mw_go1
+;;;===============================================
+mw_lc_over:
+		movff   r_wh,w_memh
+		movff   r_wl,w_mem
+		call    sub_clear_allint
+		call    sub_nflash_ntk				;;;下面是重量锁定后判断是否在规定次数内下称，若下称则重新复0.0并重新进入测试重量
+		btfsc   sys_flag2,nflash_ok
+		goto    mp_mov_weight
+mp_wo_s_b0:		
+		movlf   037h,Ad_Dsp_Delay    		;;;;注：我已修改过，试运行测试一下. 锁定后7秒关机  24H
+mp_wo_s:
+		decfsz  Ad_Dsp_Delay,1
+        goto    mp_wo_s_1
+		goto    mp_weight_over       		;;;没有下称进入扫描
+mp_wo_s_1:      
+        call    sub_t_adc_z
+        btfsc   sys_flag2,fb_zero
+        goto    mp_mov_weight
+        goto    mp_wo_s                			
+mp_weight_over:
+		bcf     ad_flag,weight0		       
+		call    sub_clear_allint
+        goto    main_kmg
+;;;----------------------------------------------
+mp_mov_weight:
+		call	sub_nflash_ntk1
+		goto	mw_start
+;;;*************************************************
+include l_ad.asm
+include l_lcd.asm
+include l_setup.asm
+include l_glue.asm
+include l_calu.asm
+include l_e2rom.asm
+include	scan_key.asm
+include	l_adcfilter.asm
+;;include otp_program.asm
+;;;*************************************************
+;;;-------------end----------------------------------
